@@ -61,7 +61,7 @@ def create_texton_instances(n_clusters, filters, concatenate):
 
 
 def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, **kwargs):
-    print("Filter responses are%s being concatenated." % "" if concatenate else " not")
+    print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
     print("Creating textons.")
     textons = create_texton_instances(n_clusters, filters, concatenate)
 
