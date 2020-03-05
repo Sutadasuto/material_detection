@@ -4,10 +4,10 @@ import os
 import pickle
 
 from collections.abc import Iterable
-from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import KMeans
 
 
-class Textons(MiniBatchKMeans):
+class Textons(KMeans):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -74,7 +74,7 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, ver
         img = cv2.imread(image_path)
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if len(filters) == 1:
-            train_data.append(textons.unroll(filters[0](img)))
+            train_data.append(np.ascontiguousarray(textons.unroll(filters[0](img))))
         if verbose == 1:
             n_i += 1
             print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
