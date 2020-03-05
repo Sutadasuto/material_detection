@@ -81,7 +81,7 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, ver
 
     if verbose == 1:
         print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
-    textons.fit(np.concatenate(train_data, 0))
+    textons.fit(np.ascontiguousarray(np.concatenate(train_data, 0)))
     pickle.dump(textons, open("kmeans_model.p", "wb"))
     if verbose == 1:
         print("K-means model saved to disk.")
