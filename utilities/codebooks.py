@@ -30,17 +30,17 @@ def change_color_space(image, color_transformer=None):
     return cv2.cvtColor(image, color_transformer)
 
 
-def create_texton_instances(n_clusters, filters, concatenate):
+def create_texton_instances(n_clusters, filters, concatenate, verbose, **kwargs):
     if not isinstance(n_clusters, Iterable):
         if type(n_clusters) is int:
             if n_clusters > 0:
                 if concatenate is False:
                     if len(filters) == 1:
-                        textons = Textons(n_clusters=n_clusters)
+                        textons = Textons(n_clusters=n_clusters, verbose=verbose, **kwargs)
                     else:
-                        textons = [Textons(n_clusters=n_clusters) for i in range(len(filters))]
+                        textons = [Textons(n_clusters=n_clusters, verbose=verbose, **kwargs) for i in range(len(filters))]
                 else:
-                    textons = Textons(n_clusters=n_clusters)
+                    textons = Textons(n_clusters=n_clusters, verbose=verbose, **kwargs)
             else:
                 raise ValueError("Number of clusters must be a positive integer.")
         else:
@@ -56,28 +56,35 @@ def create_texton_instances(n_clusters, filters, concatenate):
                 raise TypeError("Number of clusters must be a positive integer.")
             if n <= 0:
                 raise ValueError("Number of clusters must be a positive integer.")
-            textons.append(Textons(n_clusters=n))
+            textons.append(Textons(n_clusters=n, verbose=verbose, **kwargs))
     return textons
 
 
-def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, **kwargs):
-    print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
-    print("Creating textons.")
-    textons = create_texton_instances(n_clusters, filters, concatenate)
+def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, verbose=1, kwargs_kmeans={}, kwargs_filters=({},)):
+    if verbose == 1:
+        print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
+        print("Creating textons.")
+    textons = create_texton_instances(n_clusters, filters, concatenate, verbose, **kwargs_kmeans)
 
     train_data = []
+    n_i = 0
+    total_n_i = len(image_paths)
     for image_path in image_paths:
         processed_image = os.path.split(image_path)[-1]
         img = cv2.imread(image_path)
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if len(filters) == 1:
             train_data.append(textons.unroll(filters[0](img)))
-        print("Last processed: {}".format(processed_image), end='\r')
+        if verbose == 1:
+            n_i += 1
+            print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
 
-    print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
+    if verbose == 1:
+        print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
     textons.fit(np.concatenate(train_data, 0))
     pickle.dump(textons, open("kmeans_model.p", "wb"))
-    print("K-means model saved to disk.")
+    if verbose == 1:
+        print("K-means model saved to disk.")
     del train_data
     return textons
 

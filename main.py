@@ -9,6 +9,7 @@ from utilities.codebooks import make_bot, get_cluster_centers
 def parse_args(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("data_dir", type=str)
+    parser.add_argument("--verbose", type=int, default=1)
     return parser.parse_args(args)
 
 
@@ -19,7 +20,7 @@ def main(args):
     image_paths.sort()
 
     if not os.path.isfile("kmeans_model.p"):
-        textons = get_cluster_centers(image_paths, 10, (lm.filter_image,))
+        textons = get_cluster_centers(image_paths, 10, (lm.filter_image,), verbose=args.verbose)
     # else:
     #     textons = pickle.load(open("kmeans_model.p", "rb"))
 
