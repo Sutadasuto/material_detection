@@ -4,10 +4,10 @@ import os
 import pickle
 
 from collections.abc import Iterable
-from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
 
 
-class Textons(KMeans):
+class Textons(MiniBatchKMeans):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
