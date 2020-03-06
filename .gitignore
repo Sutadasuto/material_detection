@@ -3,4 +3,4 @@ __pycache*
 /*.p
 /*.npy
 /*.png
-/models_and_data
+/models
