@@ -19,7 +19,7 @@ class LeungMalik(object):
         self.scalex = scalex
         self.norient = norient
         self.nrotinv = nrotinv
-        self.f = None
+        self.f = self.make_filters()
 
     def filter_image(self, image, normalize_image=True, show_activations=False):
         if len(image.shape) == 3:
@@ -129,7 +129,6 @@ class LeungMalik(object):
             count = count + 1
             
         print("Leung-Malik bank filter created with shape {}.".format(f.shape))
-        self.f = f
         return f
 
     def show_filters(self, filters=None):
