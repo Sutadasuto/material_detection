@@ -21,11 +21,14 @@ class LeungMalik(object):
         self.nrotinv = nrotinv
         self.f = None
 
-    def filter_image(self, image, show_activations=False):
+    def filter_image(self, image, normalize_image=True, show_activations=False):
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         if self.f is None:
             self.make_filters()
+
+        if normalize_image:
+            image = (image - image.mean()) / image.std()
 
         filtered_channels = []
         for channel in range(self.f.shape[-1]):

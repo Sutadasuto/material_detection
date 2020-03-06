@@ -63,13 +63,16 @@ def create_texton_instances(n_clusters, filters, concatenate, **kwargs):
 
 
 def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwargs_kmeans={}, kwargs_filters=({},)):
-    if not os.path.exists("models_and_data"):
-        os.makedirs("models_and_data")
+    if not os.path.exists("models"):
+        os.makedirs("models")
     print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
     print("Creating textons.")
     textons = create_texton_instances(n_clusters, filters, concatenate, **kwargs_kmeans)
 
-    train_data = []
+    if len(filters) == 1:
+        train_data = []
+    elif not concatenate:
+        train_data = [[] for i in range(len(filters))]
     n_i = 0
     total_n_i = len(image_paths)
     for image_path in image_paths:
@@ -78,6 +81,15 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwa
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if len(filters) == 1:
             train_data.append(np.ascontiguousarray(textons.unroll(filters[0](img))))
+        else:
+            if not concatenate:
+                for idx, filter in enumerate(filters):
+                    train_data[idx].append(np.ascontiguousarray(textons[idx].unroll(filter(img))))
+            else:
+                feature_sets = []
+                for filter in filters:
+                    feature_sets.append(filter(img))
+                train_data.append(np.ascontiguousarray(textons.unroll(np.concatenate(feature_sets, -1))))
         n_i += 1
         print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
 
@@ -85,7 +97,6 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwa
     textons.fit(np.ascontiguousarray(np.concatenate(train_data, 0)))
     pickle.dump(textons, open(os.path.join("models_and_data", "texton_model.p"), "wb"))
     print("K-textons model saved to disk.")
-    del train_data
     return textons
 
 
