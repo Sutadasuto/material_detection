@@ -95,7 +95,7 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwa
 
     print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
     textons.fit(np.ascontiguousarray(np.concatenate(train_data, 0)))
-    pickle.dump(textons, open(os.path.join("models_and_data", "texton_model.p"), "wb"))
+    pickle.dump(textons, open(os.path.join("models", "texton_model.p"), "wb"))
     print("K-textons model saved to disk.")
     return textons
 
