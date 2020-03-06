@@ -4,10 +4,10 @@ import os
 import pickle
 
 from collections.abc import Iterable
-from sklearn.cluster import KMeans
+from sklearn.cluster import MiniBatchKMeans
 
 
-class Textons(KMeans):
+class Textons(MiniBatchKMeans):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,7 +17,7 @@ class Textons(KMeans):
 
     def unroll(self, features_3d):
         h, w, d = features_3d.shape
-        return np.reshape(features_3d, (h*w, d))
+        return np.reshape(features_3d, (h * w, d))
 
     def predict(self, filtered_image):
         X = self.unroll(filtered_image)
@@ -30,41 +30,44 @@ def change_color_space(image, color_transformer=None):
     return cv2.cvtColor(image, color_transformer)
 
 
-def create_texton_instances(n_clusters, filters, concatenate, verbose, **kwargs):
+def create_texton_instances(n_clusters, filters, concatenate, **kwargs):
     if not isinstance(n_clusters, Iterable):
         if type(n_clusters) is int:
             if n_clusters > 0:
                 if concatenate is False:
                     if len(filters) == 1:
-                        textons = Textons(n_clusters=n_clusters, verbose=verbose, **kwargs)
+                        textons = Textons(n_clusters=n_clusters, **kwargs)
                     else:
-                        textons = [Textons(n_clusters=n_clusters, verbose=verbose, **kwargs) for i in range(len(filters))]
+                        textons = [Textons(n_clusters=n_clusters, **kwargs) for i in range(len(filters))]
                 else:
-                    textons = Textons(n_clusters=n_clusters, verbose=verbose, **kwargs)
+                    textons = Textons(n_clusters=n_clusters, **kwargs)
             else:
                 raise ValueError("Number of clusters must be a positive integer.")
         else:
             raise TypeError
     else:
         if concatenate:
-            raise ValueError("As filter responses will be concatenated only a Texton object will be generated. No more than 1 number of clusters can be provided.")
+            raise ValueError(
+                "As filter responses will be concatenated only a Texton object will be generated. No more than 1 number of clusters can be provided.")
         if len(n_clusters) != len(filters):
-            raise ValueError("You should provide a single number of clusters for each filter (or a single int to be shatred among filters). No more, no less.")
+            raise ValueError(
+                "You should provide a single number of clusters for each filter (or a single int to be shatred among filters). No more, no less.")
         textons = []
         for n in n_clusters:
             if type(n) is not int:
                 raise TypeError("Number of clusters must be a positive integer.")
             if n <= 0:
                 raise ValueError("Number of clusters must be a positive integer.")
-            textons.append(Textons(n_clusters=n, verbose=verbose, **kwargs))
+            textons.append(Textons(n_clusters=n, **kwargs))
     return textons
 
 
-def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, verbose=1, kwargs_kmeans={}, kwargs_filters=({},)):
-    if verbose == 1:
-        print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
-        print("Creating textons.")
-    textons = create_texton_instances(n_clusters, filters, concatenate, verbose, **kwargs_kmeans)
+def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwargs_kmeans={}, kwargs_filters=({},)):
+    if not os.path.exists("models_and_data"):
+        os.makedirs("models_and_data")
+    print("Filter responses are being concatenated." if concatenate else "Filter responses are not being concatenated.")
+    print("Creating textons.")
+    textons = create_texton_instances(n_clusters, filters, concatenate, **kwargs_kmeans)
 
     train_data = []
     n_i = 0
@@ -75,21 +78,20 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, ver
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if len(filters) == 1:
             train_data.append(np.ascontiguousarray(textons.unroll(filters[0](img))))
-        if verbose == 1:
-            n_i += 1
-            print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
+        n_i += 1
+        print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
 
-    if verbose == 1:
-        print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
+    print("Calculating %s-D cluster centers." % train_data[0].shape[-1])
     textons.fit(np.ascontiguousarray(np.concatenate(train_data, 0)))
-    pickle.dump(textons, open("kmeans_model.p", "wb"))
-    if verbose == 1:
-        print("K-means model saved to disk.")
+    pickle.dump(textons, open(os.path.join("models_and_data", "texton_model.p"), "wb"))
+    print("K-textons model saved to disk.")
     del train_data
     return textons
 
 
 def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs):
+    if save_to is not None and not os.path.exists(save_to):
+        os.makedirs(save_to)
     data_dir = os.path.split(image_paths[0])[0]
     coded_vectors = []
     labels = []
@@ -109,6 +111,8 @@ def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs)
         dir_name = os.path.split(data_dir)[-1]
         coded_vectors = np.concatenate(coded_vectors, 0).astype(np.uint16)
         labels = np.concatenate(labels, 0)
-        np.save("%s_bot.npy" % dir_name, coded_vectors)
-        np.save("%s_labels.npy" % dir_name, labels)
+        np.save(os.path.join(save_to, "%s_bot.npy" % dir_name), coded_vectors)
+        np.save(os.path.join(save_to, "%s_labels.npy" % dir_name), labels)
+        print("Data and label arrays saved to '%s' and '%s', respectively." % (
+        os.path.join(save_to, "%s_bot.npy" % dir_name), os.path.join(save_to, "%s_labels.npy" % dir_name)))
     return coded_vectors, labels
