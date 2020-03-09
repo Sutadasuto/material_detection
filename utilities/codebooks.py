@@ -51,7 +51,8 @@ def create_texton_instances(n_clusters, filters, concatenate, **kwargs):
                 "As filter responses will be concatenated only a Texton object will be generated. No more than 1 number of clusters can be provided.")
         if len(n_clusters) != len(filters):
             raise ValueError(
-                "You should provide a single number of clusters for each filter (or a single int to be shatred among filters). No more, no less.")
+                "You should provide a single number of clusters for each filter (or a single int to be shatred among "
+                "filters). No more, no less.")
         textons = []
         for n in n_clusters:
             if type(n) is not int:
@@ -80,15 +81,15 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwa
         img = cv2.imread(image_path)
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         if len(filters) == 1:
-            train_data.append(np.ascontiguousarray(textons.unroll(filters[0](img))))
+            train_data.append(np.ascontiguousarray(textons.unroll(filters[0](img, **kwargs_filters[0]))))
         else:
             if not concatenate:
                 for idx, filter in enumerate(filters):
-                    train_data[idx].append(np.ascontiguousarray(textons[idx].unroll(filter(img))))
+                    train_data[idx].append(np.ascontiguousarray(textons[idx].unroll(filter(img, **kwargs_filters[idx]))))
             else:
                 feature_sets = []
-                for filter in filters:
-                    feature_sets.append(filter(img))
+                for idx, filter in enumerate(filters):
+                    feature_sets.append(filter(img), **kwargs_filters[idx])
                 train_data.append(np.ascontiguousarray(textons.unroll(np.concatenate(feature_sets, -1))))
         n_i += 1
         print("Last image processed ({}/{}): {}".format(n_i, total_n_i, processed_image))
@@ -118,12 +119,13 @@ def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs)
         coded_vectors.append(vector.astype(np.uint16))
         labels.append(np.array([[label]]))
 
+    coded_vectors = np.concatenate(coded_vectors, 0).astype(np.uint16)
+    labels = np.concatenate(labels, 0)
+
     if save_to is not None:
         dir_name = os.path.split(data_dir)[-1]
-        coded_vectors = np.concatenate(coded_vectors, 0).astype(np.uint16)
-        labels = np.concatenate(labels, 0)
         np.save(os.path.join(save_to, "%s_bot.npy" % dir_name), coded_vectors)
         np.save(os.path.join(save_to, "%s_labels.npy" % dir_name), labels)
         print("Data and label arrays saved to '%s' and '%s', respectively." % (
-        os.path.join(save_to, "%s_bot.npy" % dir_name), os.path.join(save_to, "%s_labels.npy" % dir_name)))
+            os.path.join(save_to, "%s_bot.npy" % dir_name), os.path.join(save_to, "%s_labels.npy" % dir_name)))
     return coded_vectors, labels
