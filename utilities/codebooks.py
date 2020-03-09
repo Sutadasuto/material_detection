@@ -110,6 +110,11 @@ def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs)
     for image_path in image_paths:
         vector = np.zeros((1, texton_model.n_clusters))
         processed_image = os.path.split(image_path)[-1]
+        containing_dir = os.path.split(image_path)[0]
+        if not os.path.exists(containing_dir + "_lm"):
+            os.makedirs(containing_dir + "_lm")
+        save_path = image_path.replace(containing_dir, containing_dir + "_lm")
+        kwargs["save_activations_to"] = save_path
         img = cv2.imread(image_path)
         coded_image = texton_model.predict(filter_function(img, **kwargs))
         unique_elements, counts_elements = np.unique(coded_image, return_counts=True)

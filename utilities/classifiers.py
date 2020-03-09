@@ -2,10 +2,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
+import yaml
 
 from sklearn.metrics import confusion_matrix, plot_confusion_matrix
 from sklearn.multiclass import OneVsRestClassifier as one_vs_all
 from utilities.codebooks import make_bot, get_cluster_centers
+
+
+def create_arguments(callables_dict):
+    yaml_file = open("models_arguments.yaml", "r")
+    args_dict = yaml.load(yaml_file)
+
+    kmeans_args = {} if args_dict['kmeans'] is None else args_dict['kmeans']
+    for key in kmeans_args.keys():
+        if kmeans_args[key] in callables_dict:
+            kmeans_args[key] = callables_dict[kmeans_args[key]]
+
+    filters_args = args_dict['filters']
+    filters_args = [filters_args[filter] for filter in filters_args.keys() if filters_args[filter] is not None]
+    for filter_args in filters_args:
+        for key in filter_args.keys():
+            if filter_args[key] in callables_dict:
+                filter_args[key] = callables_dict[filter_args[key]]
+    if len(filters_args) == 0:
+        filters_args = [{}]
+
+    classifier_args = {} if args_dict['classifier'] is None else args_dict['classifier']
+    for key in classifier_args.keys():
+        if classifier_args[key] in callables_dict:
+            classifier_args[key] = callables_dict[classifier_args[key]]
+
+    return kmeans_args, tuple(filters_args), classifier_args
 
 
 def plot_conf_mat(classifier, x_test, y_test, title="Confusion matrix", normalization=True):
