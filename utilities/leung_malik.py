@@ -203,6 +203,7 @@ class LeungMalik(object):
         plt.axis('off')
         plt.tight_layout()
         plt.savefig(location, bbox_inches='tight')
+        plt.close()
 
     def show_filters(self, filters=None):
         if filters is None:

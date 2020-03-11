@@ -1,7 +1,6 @@
 kmeans:
 filters:
     filter1:
-    filter2:
 classifier:
     C: 700
     kernel: chi2_kernel

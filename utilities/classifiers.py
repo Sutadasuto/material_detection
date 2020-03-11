@@ -6,6 +6,7 @@ import yaml
 
 from sklearn.metrics import confusion_matrix, plot_confusion_matrix
 from sklearn.multiclass import OneVsRestClassifier as one_vs_all
+from sklearn.preprocessing import MinMaxScaler
 from utilities.codebooks import make_bot, get_cluster_centers
 
 
@@ -43,14 +44,14 @@ def plot_conf_mat(classifier, x_test, y_test, title="Confusion matrix", normaliz
     return disp
 
 
-def train(args, textons, filter, base_classifier):
+def train(args, textons, filter, base_classifier, normalize=False):
     train = False
     if args.train_data_dir is not None and args.train_arrays is None:
         train_image_paths = [os.path.join(args.train_data_dir, f) for f in os.listdir(args.train_data_dir) if
                              not f.startswith(".")]
         train_image_paths.sort()
         print("Extracting codebooks from training images.")
-        train_data, train_labels = make_bot(train_image_paths, textons, filter, save_to=args.save_codebooks_to)
+        train_data, train_labels = make_bot(train_image_paths, textons, filter, save_to=args.save_codebooks_to, normalize=normalize)
         train = True
     elif args.train_arrays is not None:
         print("Loading train arrays.")
@@ -76,14 +77,14 @@ def train(args, textons, filter, base_classifier):
     return clf
 
 
-def test(args, textons, filter, classifier, plot=False, save_plot_to=None):
+def test(args, textons, filter, classifier, plot=False, save_plot_to=None, normalize=False):
     test = False
     if args.test_data_dir is not None and args.test_arrays is None:
         test_image_paths = [os.path.join(args.test_data_dir, f) for f in os.listdir(args.test_data_dir) if
                             not f.startswith(".")]
         test_image_paths.sort()
         print("Extracting codebooks from test images.")
-        test_data, test_labels = make_bot(test_image_paths, textons, filter, save_to=args.save_codebooks_to)
+        test_data, test_labels = make_bot(test_image_paths, textons, filter, save_to=args.save_codebooks_to, normalize=normalize)
         test = True
     elif args.test_arrays is not None:
         print("Loading test arrays.")
@@ -98,6 +99,7 @@ def test(args, textons, filter, classifier, plot=False, save_plot_to=None):
             print("Plotting confusion matrix.")
             ax = plot_conf_mat(classifier, test_data, test_labels)
         if save_plot_to is not None:
+            print("Saving plot to '%s'" % os.path.join(save_plot_to, "confusion_matrix.png"))
             if not os.path.exists(save_plot_to):
                 os.makedirs(save_plot_to)
             plt.savefig(os.path.join(save_plot_to, "confusion_matrix.png"), bbox_inches='tight')

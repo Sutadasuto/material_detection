@@ -7,10 +7,25 @@ from collections.abc import Iterable
 from sklearn.cluster import MiniBatchKMeans
 
 
+class BotNormalizer(object):
+    def __init__(self):
+        self.ready = True
+
+    def normalize(self, data):
+        n_samples, n_features = data.shape
+        data = data.astype(np.float32)
+        for sample in range(n_samples):
+            n_terms = np.sum(data[sample, :])
+            for feature in range(n_features):
+                data[sample, feature] = data[sample, feature] / n_terms
+        return data
+
+
 class Textons(MiniBatchKMeans):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.normalize = None
 
     def multiple_fit(self, samples):
         self.fit(np.concatenate(samples, -1))
@@ -101,7 +116,7 @@ def get_cluster_centers(image_paths, n_clusters, filters, concatenate=False, kwa
     return textons
 
 
-def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs):
+def make_bot(image_paths, texton_model, filter_function, normalize=False, save_to=None, **kwargs):
     if save_to is not None and not os.path.exists(save_to):
         os.makedirs(save_to)
     data_dir = os.path.split(image_paths[0])[0]
@@ -124,7 +139,11 @@ def make_bot(image_paths, texton_model, filter_function, save_to=None, **kwargs)
         coded_vectors.append(vector.astype(np.uint16))
         labels.append(np.array([[label]]))
 
-    coded_vectors = np.concatenate(coded_vectors, 0).astype(np.uint16)
+    coded_vectors = np.concatenate(coded_vectors, 0)
+    if normalize:
+        coded_vectors = BotNormalizer().normalize(coded_vectors)
+    else:
+        coded_vectors = coded_vectors.astype(np.uint16)
     labels = np.concatenate(labels, 0)
 
     if save_to is not None:

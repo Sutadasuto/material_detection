@@ -5,9 +5,9 @@ import os
 import pickle
 import yaml
 
+from sklearn.svm import SVC as SVM
 from utilities.classifiers import create_arguments
 from sklearn.metrics.pairwise import chi2_kernel
-from sklearn.svm import SVC as svm
 from utilities import classifiers
 from utilities.leung_malik import LeungMalik as LM
 from utilities.codebooks import make_bot, get_cluster_centers
@@ -53,8 +53,8 @@ def main(args):
             textons = get_cluster_centers(cluster_train_image_paths, args.n_clusters, (lm.filter_image,),
                                           kwargs_kmeans=kwargs_kmeans, kwargs_filters=kwargs_filters)
 
-    trained_clf = classifiers.train(args, textons, lm.filter_image, svm(**kwargs_classifier))
-    conf_mat = classifiers.test(args, textons, lm.filter_image, trained_clf, plot=True, save_plot_to=os.getcwd())
+    trained_clf = classifiers.train(args, textons, lm.filter_image, SVM(**kwargs_classifier), normalize=True)
+    conf_mat = classifiers.test(args, textons, lm.filter_image, trained_clf, plot=True, save_plot_to=os.getcwd(), normalize=True)
 
 
 if __name__ == "__main__":
