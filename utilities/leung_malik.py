@@ -21,7 +21,7 @@ class LeungMalik(object):
         self.nrotinv = nrotinv
         self.f = self.make_filters()
 
-    def filter_image(self, image, normalize_image=True, show_activations=False, save_activations_to=None):
+    def lm_responses(self, image, normalize_image=True, show_activations=False, save_activations_to=None):
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         if self.f is None:
@@ -129,7 +129,7 @@ class LeungMalik(object):
         for i in range(len(scales)):
             f[:, :, count] = self.gaussian_2d(self.sup, scales[i])
             count = count + 1
-            
+
         print("Leung-Malik bank filter created with shape {}.".format(f.shape))
         return f
 
@@ -139,18 +139,19 @@ class LeungMalik(object):
         rows = 4
         cols = 12
         dims = filters.shape
-        canvas = np.ones((rows * dims[0] + (rows - 1)*int(dims[0]/10), cols * dims[1] + (cols - 1)*int(dims[1]/10)))
+        canvas = np.ones(
+            (rows * dims[0] + (rows - 1) * int(dims[0] / 10), cols * dims[1] + (cols - 1) * int(dims[1] / 10)))
         # First order derivative Gaussian Filter
         for i in range(0, 6):
             index = i
-            row = int(index/cols)
+            row = int(index / cols)
             col = index % cols
-            x_0 = col*(int(dims[1]/10) + dims[1])
-            y_0 = row*(int(dims[0]/10) + dims[0])
+            x_0 = col * (int(dims[1] / 10) + dims[1])
+            y_0 = row * (int(dims[0] / 10) + dims[0])
             filter = cv2.normalize(filters[..., i], None, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-            canvas[y_0:y_0+dims[0], x_0:x_0+dims[1]] = filter
+            canvas[y_0:y_0 + dims[0], x_0:x_0 + dims[1]] = filter
         for i in range(6, 12):
-            index = i+6
+            index = i + 6
             row = int(index / cols)
             col = index % cols
             x_0 = col * (int(dims[1] / 10) + dims[1])
@@ -211,18 +212,19 @@ class LeungMalik(object):
         rows = 4
         cols = 12
         dims = filters.shape
-        canvas = np.ones((rows * dims[0] + (rows - 1)*int(dims[0]/10), cols * dims[1] + (cols - 1)*int(dims[1]/10)))
+        canvas = np.ones(
+            (rows * dims[0] + (rows - 1) * int(dims[0] / 10), cols * dims[1] + (cols - 1) * int(dims[1] / 10)))
         # First order derivative Gaussian Filter
         for i in range(0, 6):
             index = i
-            row = int(index/cols)
+            row = int(index / cols)
             col = index % cols
-            x_0 = col*(int(dims[1]/10) + dims[1])
-            y_0 = row*(int(dims[0]/10) + dims[0])
+            x_0 = col * (int(dims[1] / 10) + dims[1])
+            y_0 = row * (int(dims[0] / 10) + dims[0])
             filter = cv2.normalize(filters[..., i], None, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-            canvas[y_0:y_0+dims[0], x_0:x_0+dims[1]] = filter
+            canvas[y_0:y_0 + dims[0], x_0:x_0 + dims[1]] = filter
         for i in range(6, 12):
-            index = i+6
+            index = i + 6
             row = int(index / cols)
             col = index % cols
             x_0 = col * (int(dims[1] / 10) + dims[1])

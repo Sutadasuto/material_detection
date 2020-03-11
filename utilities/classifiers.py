@@ -2,38 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pickle
-import yaml
 
 from sklearn.metrics import confusion_matrix, plot_confusion_matrix
 from sklearn.multiclass import OneVsRestClassifier as one_vs_all
-from sklearn.preprocessing import MinMaxScaler
-from utilities.codebooks import make_bot, get_cluster_centers
-
-
-def create_arguments(callables_dict):
-    yaml_file = open("models_arguments.yaml", "r")
-    args_dict = yaml.load(yaml_file)
-
-    kmeans_args = {} if args_dict['kmeans'] is None else args_dict['kmeans']
-    for key in kmeans_args.keys():
-        if kmeans_args[key] in callables_dict:
-            kmeans_args[key] = callables_dict[kmeans_args[key]]
-
-    filters_args = args_dict['filters']
-    filters_args = [filters_args[filter] for filter in filters_args.keys() if filters_args[filter] is not None]
-    for filter_args in filters_args:
-        for key in filter_args.keys():
-            if filter_args[key] in callables_dict:
-                filter_args[key] = callables_dict[filter_args[key]]
-    if len(filters_args) == 0:
-        filters_args = [{}]
-
-    classifier_args = {} if args_dict['classifier'] is None else args_dict['classifier']
-    for key in classifier_args.keys():
-        if classifier_args[key] in callables_dict:
-            classifier_args[key] = callables_dict[classifier_args[key]]
-
-    return kmeans_args, tuple(filters_args), classifier_args
+from utilities.codebooks import make_bot
 
 
 def plot_conf_mat(classifier, x_test, y_test, title="Confusion matrix", normalization=True):
@@ -44,47 +16,62 @@ def plot_conf_mat(classifier, x_test, y_test, title="Confusion matrix", normaliz
     return disp
 
 
-def train(args, textons, filter, base_classifier, normalize=False):
+def train(args, textons, filters, filters_args, base_classifier, normalize=False, save_filter_outputs=False):
+    if len(filters) != len(textons):
+        raise ValueError("The number of provided fitlers is different than the number of textos models.")
     train = False
     if args.train_data_dir is not None and args.train_arrays is None:
         train_image_paths = [os.path.join(args.train_data_dir, f) for f in os.listdir(args.train_data_dir) if
                              not f.startswith(".")]
         train_image_paths.sort()
         print("Extracting codebooks from training images.")
-        train_data, train_labels = make_bot(train_image_paths, textons, filter, save_to=args.save_codebooks_to, normalize=normalize)
+        train_data, train_labels, applied_filters = make_bot(train_image_paths, textons, filters, filters_args,
+                                                             save_to=args.save_codebooks_to,
+                                                             normalize=normalize,
+                                                             save_filter_outputs=save_filter_outputs)
         train = True
     elif args.train_arrays is not None:
         print("Loading train arrays.")
         train_data = np.load(args.train_arrays[0])
         train_labels = np.load(args.train_arrays[1])
+        applied_filters = np.load(args.train_arrays[2])
         train = True
 
     if train:
-        if args.classifier is None:
-            clf = one_vs_all(base_classifier)
+        n_filters, n_samples, n_features = train_data.shape
+        if args.classifiers is None:
+            clfs = []
         else:
-            clf = pickle.load(args.classifier)
-        print("Training one-vs-all classifier.")
-        clf.fit(train_data, train_labels)
+            clfs = pickle.load(args.classifiers)
+
+        for filter in range(n_filters):
+            if args.classifiers is None:
+                clfs.append([one_vs_all(base_classifier), applied_filters[filter]])
+            print("Training one-vs-all classifier number %s." % filter)
+            clfs[filter][0].fit(train_data[filter], train_labels)
+
         if not os.path.exists("models"):
             os.makedirs("models")
-        pickle.dump(clf, open(os.path.join("models", "one_vs_all_model.p"), "wb"))
-        print("Model saved to '%s'" % os.path.join("models", "one_vs_all_model.p"))
+        pickle.dump(clfs, open(os.path.join("models", "one_vs_all_models.p"), "wb"))
+        print("Models saved to '%s'" % os.path.join("models", "one_vs_all_models.p"))
     else:
-        if args.classifier is None:
-            raise ValueError("Cannot test model if no trained model nor training data are provided.")
-        clf = pickle.load(open(args.classifier, "rb"))
-    return clf
+        if args.classifiers is None:
+            raise ValueError("Cannot test model if no trained models nor training data are provided.")
+        clfs = pickle.load(open(args.classifiers, "rb"))
+    return clfs
 
 
-def test(args, textons, filter, classifier, plot=False, save_plot_to=None, normalize=False):
+def test(args, textons, filters, filters_args, classifiers, plot=False, save_plot_to=None, normalize=False,
+         save_filter_outputs=False):
     test = False
     if args.test_data_dir is not None and args.test_arrays is None:
         test_image_paths = [os.path.join(args.test_data_dir, f) for f in os.listdir(args.test_data_dir) if
                             not f.startswith(".")]
         test_image_paths.sort()
         print("Extracting codebooks from test images.")
-        test_data, test_labels = make_bot(test_image_paths, textons, filter, save_to=args.save_codebooks_to, normalize=normalize)
+        test_data, test_labels, applied_filters = make_bot(test_image_paths, textons, filters, filters_args,
+                                                           save_to=args.save_codebooks_to,
+                                                           normalize=normalize, save_filter_outputs=save_filter_outputs)
         test = True
     elif args.test_arrays is not None:
         print("Loading test arrays.")
@@ -92,18 +79,21 @@ def test(args, textons, filter, classifier, plot=False, save_plot_to=None, norma
         test_labels = np.load(args.test_arrays[1])
         test = True
     if test:
-        predicted_labels = classifier.predict(test_data)
-        print("Calculating confusion matrix.")
-        conf_mat = confusion_matrix(test_labels, predicted_labels)
-        if plot or save_plot_to:
-            print("Plotting confusion matrix.")
-            ax = plot_conf_mat(classifier, test_data, test_labels)
-        if save_plot_to is not None:
-            print("Saving plot to '%s'" % os.path.join(save_plot_to, "confusion_matrix.png"))
-            if not os.path.exists(save_plot_to):
-                os.makedirs(save_plot_to)
-            plt.savefig(os.path.join(save_plot_to, "confusion_matrix.png"), bbox_inches='tight')
-        if plot:
-            plt.show()
-        return conf_mat
+        conf_mats = []
+        for filter, classifier in enumerate(classifiers):
+            predicted_labels = classifier[0].predict(test_data[filter])
+            print("Calculating confusion matrix.")
+            conf_mat = confusion_matrix(test_labels, predicted_labels)
+            if plot or save_plot_to:
+                print("Plotting confusion matrix.")
+                ax = plot_conf_mat(classifier[0], test_data[filter], test_labels)
+            if save_plot_to is not None:
+                print("Saving plot to '%s'" % os.path.join(save_plot_to, "confusion_matrix_%s.png" % classifier[1]))
+                if not os.path.exists(save_plot_to):
+                    os.makedirs(save_plot_to)
+                plt.savefig(os.path.join(save_plot_to, "confusion_matrix_%s.png" % classifier[1]), bbox_inches='tight')
+            if plot:
+                plt.show()
+            conf_mats.append([conf_mat, classifier[1]])
+        return conf_mats
     return None
