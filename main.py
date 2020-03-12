@@ -10,7 +10,7 @@ from utilities.miscellaneous import create_arguments, change_color_space
 from sklearn.metrics.pairwise import chi2_kernel
 from utilities import classifiers
 from utilities.leung_malik import LeungMalik as LM
-from utilities.codebooks import get_cluster_centers
+from utilities.codebooks import fit_texton_instances
 
 callables_dict = {
     "chi2_kernel": chi2_kernel,
@@ -32,6 +32,7 @@ def parse_args(args=None):
     parser.add_argument('--test_arrays', nargs=3, type=str, default=None)
     parser.add_argument("--textons_models", type=str, default=None)
     parser.add_argument("--classifiers", type=str, default=None)
+    parser.add_argument("--concatenate_features", type=bool, default=False)
     args_dict = parser.parse_args(args)
     if len(args_dict.n_clusters) == 1:
         args_dict.n_clusters = args_dict.n_clusters[0]
@@ -39,27 +40,8 @@ def parse_args(args=None):
 
 
 def main(args):
-    lm = LM()
 
-    if args.textons_models is not None and os.path.isfile(args.textons_models) and args.textons_models.endswith(".p"):
-        textons = pickle.load(open(args.textons_models, "rb"))
-    else:
-        print("No valid textons model path provided. Creating model from training data.")
-        if args.cluster_train_data_dir == "same":
-            if args.train_data_dir is None:
-                raise ValueError("No directory providing training images was provided.")
-            train_image_paths = [os.path.join(args.train_data_dir, f) for f in os.listdir(args.train_data_dir) if
-                                 not f.startswith(".")]
-            train_image_paths.sort()
-            textons = get_cluster_centers(train_image_paths, args.n_clusters, filters,
-                                          kwargs_kmeans=kwargs_kmeans, kwargs_filters=kwargs_filters)
-        else:
-            cluster_train_image_paths = [os.path.join(args.cluster_train_data_dir, f) for f in
-                                         os.listdir(args.cluster_train_data_dir) if
-                                         not f.startswith(".")]
-            cluster_train_image_paths.sort()
-            textons = get_cluster_centers(cluster_train_image_paths, args.n_clusters, filters,
-                                          kwargs_kmeans=kwargs_kmeans, kwargs_filters=kwargs_filters)
+    textons = fit_texton_instances(args, kwargs_kmeans, filters, kwargs_filters)
 
     trained_clf = classifiers.train(args, textons, filters, kwargs_filters, SVM(**kwargs_classifier), normalize=True,
                                     save_filter_outputs=True)

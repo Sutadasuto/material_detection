@@ -17,7 +17,7 @@ def plot_conf_mat(classifier, x_test, y_test, title="Confusion matrix", normaliz
 
 
 def train(args, textons, filters, filters_args, base_classifier, normalize=False, save_filter_outputs=False):
-    if len(filters) != len(textons):
+    if len(filters) != len(textons) and not args.concatenate_features:
         raise ValueError("The number of provided fitlers is different than the number of textos models.")
     train = False
     if args.train_data_dir is not None and args.train_arrays is None:
@@ -26,6 +26,7 @@ def train(args, textons, filters, filters_args, base_classifier, normalize=False
         train_image_paths.sort()
         print("Extracting codebooks from training images.")
         train_data, train_labels, applied_filters = make_bot(train_image_paths, textons, filters, filters_args,
+                                                             concatenate=args.concatenate_features,
                                                              save_to=args.save_codebooks_to,
                                                              normalize=normalize,
                                                              save_filter_outputs=save_filter_outputs)
@@ -70,6 +71,7 @@ def test(args, textons, filters, filters_args, classifiers, plot=False, save_plo
         test_image_paths.sort()
         print("Extracting codebooks from test images.")
         test_data, test_labels, applied_filters = make_bot(test_image_paths, textons, filters, filters_args,
+                                                           concatenate=args.concatenate_features,
                                                            save_to=args.save_codebooks_to,
                                                            normalize=normalize, save_filter_outputs=save_filter_outputs)
         test = True
