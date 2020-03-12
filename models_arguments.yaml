@@ -1,9 +1,9 @@
 kmeans:
+    random_state: 1
 filters:
     filter1:
         name: change_color_space
         color_transformer: BGR2HSV
-        normalize_output: False
 classifier:
     C: 700
     kernel: chi2_kernel

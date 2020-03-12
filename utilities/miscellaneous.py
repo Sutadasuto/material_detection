@@ -10,7 +10,7 @@ def change_color_space(image, color_transformer=None, normalize_output=True, sho
         image = cv2.cvtColor(image, color_transformer)
 
     if normalize_output:
-        image = (image - image.mean()) / image.std()
+        image = ((image - image.mean()) / image.std()).astype(np.float32)
 
     if show_activations:
         height, width, channels = image.shape
